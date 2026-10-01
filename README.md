@@ -37,3 +37,6 @@ This app uses Firebase Authentication and Cloud Firestore. User profiles are sto
    ```
 
 Firebase web config values (including the API key) are included in the browser app and are not server secrets. Keep Firestore rules restrictive; never use public/test rules for patient or account data. This demo is not a substitute for a security or regulatory review before storing real health information.
+sdfcre
+ewrf4ed
+ewsrt3
