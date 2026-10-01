@@ -136,6 +136,17 @@ export interface PatientProfile {
   symptomsDuration: string;
 }
 
+export interface MLModelInfo {
+  modelType: string;
+  nEstimators?: number;
+  testAccuracy?: number;
+  confidence: number;
+  confidencePercentage: number;
+  topPredictions: { disease: string; probability: number; confidence_percentage: number }[];
+  featureContributions: { feature: string; symptom_name: string; importance_score: number; is_present: boolean }[];
+  isMlActive: boolean;
+}
+
 export interface SymptomAnalysisResult {
   overview: string;
   triageLevel: string;
@@ -145,6 +156,7 @@ export interface SymptomAnalysisResult {
   vitalEmergencySigns?: string[];
   doctorQuestionsToAsk?: string[];
   disclaimer: string;
+  mlModelInfo?: MLModelInfo;
 }
 
 export interface UploadedMedicalImage {

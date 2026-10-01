@@ -30,6 +30,7 @@ import {
   Download,
   Loader2,
   Check,
+  Save,
   Camera,
   Image as ImageIcon,
   ZoomIn,
@@ -42,6 +43,10 @@ interface MedicalReportViewProps {
   report: MedicalReport;
   selectedRegion: BodyRegion;
   onSelectRegion: (region: BodyRegion) => void;
+  onSaveReport?: () => void;
+  isSavingReport?: boolean;
+  reportSaved?: boolean;
+  saveReportError?: string;
   onAddPrescription?: (med: PrescribedMedication) => void;
   onRemovePrescription?: (id: string) => void;
   onRegenerateReport?: () => void;
@@ -51,6 +56,10 @@ export const MedicalReportView: React.FC<MedicalReportViewProps> = ({
   report,
   selectedRegion,
   onSelectRegion,
+  onSaveReport,
+  isSavingReport = false,
+  reportSaved = false,
+  saveReportError = '',
   onAddPrescription,
   onRemovePrescription,
   onRegenerateReport
@@ -115,6 +124,28 @@ export const MedicalReportView: React.FC<MedicalReportViewProps> = ({
             </button>
           )}
 
+          {onSaveReport && (
+            <button
+              id="btn-save-report"
+              onClick={onSaveReport}
+              disabled={isSavingReport || reportSaved}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] border border-white/60 transition disabled:opacity-60 ${
+                reportSaved
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-[#E0E5EC] text-slate-700 hover:text-blue-600'
+              }`}
+            >
+              {isSavingReport ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : reportSaved ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              <span>{isSavingReport ? 'Saving…' : reportSaved ? 'Saved to Firebase' : 'Save to Firebase'}</span>
+            </button>
+          )}
+
           {/* Primary Action: Direct Download PDF */}
           <button
             id="btn-download-pdf"
@@ -156,6 +187,11 @@ export const MedicalReportView: React.FC<MedicalReportViewProps> = ({
             <span>Print</span>
           </button>
         </div>
+        {saveReportError && (
+          <p role="alert" className="text-sm font-medium text-red-600">
+            {saveReportError}
+          </p>
+        )}
       </div>
 
       {/* Main Official Medical Report Card */}

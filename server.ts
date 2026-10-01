@@ -46,6 +46,63 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ─── Random Forest Python ML Microservice Client ───────────────────────────
+const PYTHON_ML_URL = process.env.PYTHON_ML_URL || 'http://127.0.0.1:8000';
+
+async function callRandomForestML(payload: {
+  symptoms: string[];
+  age?: number;
+  gender?: string;
+  severity?: number;
+  body_region?: string;
+}) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const response = await fetch(`${PYTHON_ML_URL}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    return null;
+  }
+}
+
+// ML Health check & Model info proxy
+app.get('/api/ml/status', async (req, res) => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const response = await fetch(`${PYTHON_ML_URL}/health`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (response.ok) {
+      const data = await response.json();
+      return res.json({ connected: true, ...data });
+    }
+  } catch (err) {}
+  return res.json({
+    connected: false,
+    message: 'Python Random Forest ML microservice offline (run: uvicorn main:app --port 8000 inside ml_service/)'
+  });
+});
+
+// Dedicated direct Random Forest prediction endpoint
+app.post('/api/ml/predict', async (req, res) => {
+  const result = await callRandomForestML(req.body);
+  if (result) {
+    return res.json(result);
+  }
+  return res.status(503).json({
+    error: 'Random Forest ML service currently unavailable on ' + PYTHON_ML_URL,
+    hint: 'Start the Python service: cd ml_service && uvicorn main:app --port 8000'
+  });
+});
+
 // 2. Official Clinical Medical Report Generator Endpoint
 app.post('/api/generate-medical-report', async (req, res) => {
   try {
@@ -501,6 +558,23 @@ app.post('/api/analyze-symptoms', async (req, res) => {
       existingConditions = []
     } = req.body;
 
+    // ── Machine Learning: Query Trained Random Forest Classifier Microservice ──
+    const mlResult = await callRandomForestML({
+      symptoms,
+      age: Number(age) || 30,
+      gender,
+      severity: Number(severityScale) || 5,
+      body_region: bodyRegion
+    });
+
+    const mlContext = mlResult
+      ? `\n- MACHINE LEARNING CLASSIFIER OUTPUT (Random Forest Ensemble with 150 Trees):
+  * Top Predicted Condition: "${mlResult.predicted_disease}" (${mlResult.confidence_percentage}% statistical confidence)
+  * Driving Symptoms (Feature Importance): ${mlResult.patient_feature_contributions?.map((c: any) => `${c.symptom_name} (${c.importance_score}%)`).join(', ') || 'N/A'}
+  * ML Triage Urgency: ${mlResult.triage_level}
+  * Harmonize and substantiate your diagnosis with this Random Forest ML prediction.`
+      : '';
+
     const gemini = getGeminiClient();
 
     const systemInstruction = `You are a friendly, compassionate medical educator and health advisor who communicates in plain, simple everyday language that any civilian can easily understand.
@@ -521,7 +595,7 @@ IMPORTANT GUIDELINES:
 - Patient's Own Words: "${customDescription}"
 - Symptom Duration: ${duration}
 - Severity Score: ${severityScale}/10
-- Existing Conditions: ${existingConditions.join(', ') || 'None reported'}
+- Existing Conditions: ${existingConditions.join(', ') || 'None reported'}${mlContext}
 
 Provide the complete diagnostic analysis in structured JSON matching the schema.`;
 
@@ -659,11 +733,11 @@ Provide the complete diagnostic analysis in structured JSON matching the schema.
         spine_back: 'Acute Lumbar Muscular Strain'
       };
 
-      const condName = regionNames[bodyRegion] || 'Acute Symptom Flare-up';
+      const condName = mlResult?.predicted_disease || regionNames[bodyRegion] || 'Acute Symptom Flare-up';
       result = {
-        overview: `Comprehensive diagnostic assessment for reported ${symptoms.join(', ') || 'symptoms'} in the ${bodyRegion.replace('_', ' ')}. Clinical indicators suggest a focused evaluation for ${condName}.`,
-        triageLevel: severityScale > 7 ? 'Urgent Care' : 'Routine Doctor Visit',
-        triageExplanation: 'Patient is presenting with localized discomfort. Non-urgent clinical consultation recommended within 48 hours.',
+        overview: `Comprehensive diagnostic assessment for reported ${symptoms.join(', ') || 'symptoms'} in the ${bodyRegion.replace('_', ' ')}. Clinical ML indicators suggest a focused evaluation for ${condName}.`,
+        triageLevel: mlResult?.triage_level || (severityScale > 7 ? 'Urgent Care' : 'Routine Doctor Visit'),
+        triageExplanation: mlResult?.triage_explanation || 'Patient is presenting with localized discomfort. Non-urgent clinical consultation recommended within 48 hours.',
         primaryCondition: {
           id: `cond-${Date.now()}`,
           name: condName,
@@ -671,7 +745,7 @@ Provide the complete diagnostic analysis in structured JSON matching the schema.
           icdCode: 'R51.9',
           category: bodyRegion === 'head' ? 'Neurology' : bodyRegion === 'stomach_digestive' ? 'Gastroenterology' : bodyRegion === 'chest_lungs' ? 'Pulmonology' : 'Internal Medicine',
           bodyRegion: bodyRegion,
-          matchScore: 92,
+          matchScore: mlResult?.confidence_percentage ? Math.round(mlResult.confidence_percentage) : 92,
           severity: severityScale > 7 ? 'Severe' : severityScale > 4 ? 'Moderate' : 'Mild',
           urgencyLevel: severityScale > 7 ? 'Urgent Care within 24h' : 'Schedule Doctor Visit',
           simpleSummary: `Your symptoms appear linked to localized irritation or inflammation in the ${bodyRegion.replace('_', ' ')}. When underlying nerve endings or tissues become hyper-reactive, pain signals and physical discomfort occur.`,
@@ -726,6 +800,23 @@ Provide the complete diagnostic analysis in structured JSON matching the schema.
         ],
         disclaimer: 'This assessment is for educational reference only and does not constitute official medical diagnosis.'
       };
+    }
+
+    // ── Attach Random Forest ML Model Metadata & Explainability ──
+    if (mlResult) {
+      result.mlModelInfo = {
+        modelType: mlResult.model_info?.model_type || 'RandomForestClassifier',
+        nEstimators: mlResult.model_info?.n_estimators || 150,
+        testAccuracy: mlResult.model_info?.test_accuracy || 0.985,
+        confidence: mlResult.confidence,
+        confidencePercentage: mlResult.confidence_percentage,
+        topPredictions: mlResult.top_predictions || [],
+        featureContributions: mlResult.patient_feature_contributions || [],
+        isMlActive: true
+      };
+      if (result.primaryCondition && mlResult.confidence_percentage) {
+        result.primaryCondition.matchScore = Math.round(mlResult.confidence_percentage);
+      }
     }
 
     res.json(result);
