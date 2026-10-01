@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Neumorphic High-Density Soft UI Shadows */
+  .neu-raised-sm {
+    background-color: #E0E5EC;
+    box-shadow: 4px 4px 8px #b8b9be, -4px -4px 8px #ffffff;
+  }
+  .neu-raised {
+    background-color: #E0E5EC;
+    box-shadow: 6px 6px 12px #b8b9be, -6px -6px 12px #ffffff;
+  }
+  .neu-raised-lg {
+    background-color: #E0E5EC;
+    box-shadow: 10px 10px 20px #b8b9be, -10px -10px 20px #ffffff;
+  }
+  .neu-inset-sm {
+    background-color: #E0E5EC;
+    box-shadow: inset 3px 3px 6px #b8b9be, inset -3px -3px 6px #ffffff;
+  }
+  .neu-inset {
+    background-color: #E0E5EC;
+    box-shadow: inset 4px 4px 8px #b8b9be, inset -4px -4px 8px #ffffff;
+  }
+  .neu-inset-lg {
+    background-color: #E0E5EC;
+    box-shadow: inset 6px 6px 12px #b8b9be, inset -6px -6px 12px #ffffff;
+  }
+  .neu-btn {
+    background-color: #E0E5EC;
+    box-shadow: 4px 4px 8px #b8b9be, -4px -4px 8px #ffffff;
+    transition: all 0.2s ease;
+  }
+  .neu-btn:hover {
+    box-shadow: 2px 2px 4px #b8b9be, -2px -2px 4px #ffffff;
+  }
+  .neu-btn:active, .neu-btn-active {
+    box-shadow: inset 3px 3px 6px #b8b9be, inset -3px -3px 6px #ffffff;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media print {
+  header, footer, nav, button, #symptom-input-form, #body-viewer-3d-container {
+    display: none !important;
+  }
+  body, main, #diagnosis-output-section, #medication-treatment-block {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .neu-raised, .neu-raised-lg, .neu-inset, .neu-inset-lg {
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+  }
+}

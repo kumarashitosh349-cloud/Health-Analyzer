@@ -1,0 +1,6 @@
+{
+  "name": "3D Health Analyzer & Disease Guide",
+  "description": "Interactive 3D medical diagnosis visualizer with image & scan report generation, simplified disease breakdowns, and comprehensive medication treatment guides powered by Gemini AI.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
